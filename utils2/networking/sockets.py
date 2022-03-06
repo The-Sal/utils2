@@ -37,6 +37,7 @@ class Service(socket.socket):
 
 
     def start_listen(self):
+        """Starts the service listening for new connections."""
         while self._alive:
             self.listen()
             conn, address = self.accept()
