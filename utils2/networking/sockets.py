@@ -1,152 +1,86 @@
 import socket
-import time
+from utils2.networking import _socketUtils
 
-from utils2.thread import thread
-
-class ServiceKeys:
-    on_connect = "on_connect"
-    on_disconnect = "on_disconnect"
-    on_receive = "on_receive"
-    on_send = "on_send"
-
-
-class client:
-    def __init__(self, sock, address):
-        """A simple class to represent the socket and address of a client"""
-        self._socket = sock
-        self._address = address
-
-    @property
-    def address(self):
-        return self._address
-
-    @property
-    def socket(self):
-        return self._socket
-
-
-
-def _threadFunction(func):
-    """A decorator to run a function in a thread"""
-    def wrapper(*args, **kwargs):
-        return thread(func, *args, **kwargs)
-    return wrapper
-
+_serviceKeys = _socketUtils.ServiceKeys
+ServiceFunctions = _socketUtils.ServiceFunctions
+Client = _socketUtils.client
 
 
 class Service(socket.socket):
-    def __init__(self, host='0.0.0.0', port=9998, functions=None):
+    """A simple wrapper around the socket class that allows for easy creation of a server socket."""
+    def __init__(self, functions: ServiceFunctions, host="localhost", port=8080):
         """
-        Fully customizable socket service.
+        All new connections will be passed to the on_connect function which will be threaded.
+        Access to the connection threads can be accessed via the 'connections' property. The threads are automatically
+        assigned the address of the client as the key.
 
+
+        :param functions: A dictionary of functions to be used by the service.
         :param host: The host to listen on.
         :param port: The port to listen on.
-        :param functions: A dictionary of functions to call when events occur.
-            example:
-                {
-                    'on_connect': on_connect,
-                    'on_disconnect': on_disconnect,
-                    'on_receive': on_receive,
-                    'on_send': on_send
-                }
-            Use the ServiceKeys class to get the keys for the dictionary.
-            on_connect must be present. it will be passed a Client Class Object.
 
+        :type functions: ServiceFunctions
+        :type host: str
+        :type port: int
 
+        :return: None
         """
-        self.functions = functions
-        # self.bind((host, port))
         super().__init__(socket.AF_INET, socket.SOCK_STREAM)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.bind((host, port))
 
+        self._func = functions
 
-        self.threads = {}
-
-
-
-        if functions is None:
-            self.functions = {}
-        else:
-            self.functions = {}
 
         self._alive = True
+        self._threads = {}
 
 
-        assert self.functions.get(ServiceKeys.on_connect) is not None, "on_connect must be present"
-
-    def _get_and_execute(self, key, *args):
-        if key in self.functions:
-            return self.functions[key](*args)
-        else:
-            return None
-
-    def _on_connect(self, *args):
-        """
-        Callback for when a client connects.
-        """
-        self._get_and_execute(ServiceKeys.on_connect, *args)
-
-    def _on_disconnect(self, *args):
-        """
-        Callback for when a client disconnects.
-        """
-        self._get_and_execute(ServiceKeys.on_disconnect, *args)
-
-    def _on_receive(self, *args):
-        """
-        Callback for when a client sends data.
-        """
-        self._get_and_execute(ServiceKeys.on_receive, *args)
-
-    def _on_send(self, *args):
-        """
-        Callback for when a client receives data.
-        """
-        self._get_and_execute(ServiceKeys.on_send, *args)
-
-
-    def start_listening(self):
-        """
-        Starts listening for clients. New clients will be appended to the thread dictionary with the address as the key.
-        """
-        self.listen()
+    def start_listen(self):
         while self._alive:
-            _client, address = self.accept()
-            th = thread(self._on_connect, [client(sock=_client, address=address)])
-            self.threads[address] = th
+            self.listen()
+            conn, address = self.accept()
+
+            # check if we have an on_connect function
+            on_connect = self._func[_serviceKeys.on_connect]
+            if on_connect is None:
+                self._threads[address] = _socketUtils.builtinInterceptor(self, conn, address, self._func)
+            else:
+                self._threads[address] = on_connect(Client(address=address, sock=conn))
 
 
-    @_threadFunction
-    def _builtin_interceptor(self, connection: socket.socket, address, delay=0.5):
-        """
-        Builtin interceptor for when a client connects.
-        """
-        while self._alive:
-            time.sleep(delay)
-            try:
-                data = connection.recv(1024)
-                if data:
-                    self._on_receive(data, address)
-                else:
-                    self._on_disconnect(address)
-                    break
-            except (ConnectionResetError, ConnectionAbortedError, OSError):
-                self._on_disconnect(address)
-                break
 
-        try:
-            connection.close()
-        except OSError:
-            pass
+    @property
+    def connections(self):
+        return self._threads
+
+    def stop_listen(self):
+        """Stops the service from listening for new connections and closes all connections."""
+        self._alive = False
+        for thread in self._threads.values():
+            thread.join()
+        self.close()
 
 
+    def __del__(self):
+        self.stop_listen()
 
 
 
 
 if __name__ == '__main__':
-    s = Service()
+    import time
 
+    def test_on_recv(data: bytes, client: Client):
+        print("Received:", data.decode(), "from", client.address[0])
+        client.socket.send(data)
 
+    def test_on_disconnect(client: Client):
+        print("Client disconnected:", client.address[0])
 
+    funcs = ServiceFunctions(on_receive=test_on_recv, on_disconnect=test_on_disconnect)
+    s = Service(functions=funcs)
+    s.start_listen()
+    time.sleep(5)
+    s.stop_listen()
+    print(s.connections)
