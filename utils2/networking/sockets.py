@@ -11,11 +11,11 @@ class Service(socket.socket):
     def __init__(self, functions: ServiceFunctions, host="localhost", port=8080):
         """
         All new connections will be passed to the on_connect function which will be threaded.
-        Access to the connection threads can be accessed via the 'connections' property. The threads are automatically
+        Running threads can be accessed via the 'connections' property. The threads are automatically
         assigned the address of the client as the key.
 
 
-        :param functions: A dictionary of functions to be used by the service.
+        :param functions: A ServiceFunctions object which is called when key events occur
         :param host: The host to listen on.
         :param port: The port to listen on.
 
@@ -70,18 +70,4 @@ class Service(socket.socket):
 
 
 if __name__ == '__main__':
-    import time
-
-    def test_on_recv(data: bytes, client: Client):
-        print("Received:", data.decode(), "from", client.address[0])
-        client.socket.send(data)
-
-    def test_on_disconnect(client: Client):
-        print("Client disconnected:", client.address[0])
-
-    funcs = ServiceFunctions(on_receive=test_on_recv, on_disconnect=test_on_disconnect)
-    s = Service(functions=funcs)
-    s.start_listen()
-    time.sleep(5)
-    s.stop_listen()
-    print(s.connections)
+    pass
