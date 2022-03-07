@@ -72,8 +72,8 @@ class ServiceFunctions:
 
 
 class client:
+    """A simple class to represent the socket and address of a client"""
     def __init__(self, sock, address):
-        """A simple class to represent the socket and address of a client"""
         self._socket = sock
         self._address = address
 

@@ -1,5 +1,6 @@
 import threading
 
+
 def thread(target, args=None, daemon=False):
     if isinstance(args, str):
         args = (args,)
@@ -48,34 +49,9 @@ def multiple_threads(function_data, daemon=True):
     return obj_s
 
 
-class ThreadManager:
-    def __init__(self):
-        self.threads = []
+def thread_d(function):
+    """Decorator for threading"""
+    def wrapper(*args):
+        return thread(function, args, daemon=True)
 
-    def add_thread(self, target, args=None, daemon=False):
-        if isinstance(args, str):
-            args = (args,)
-
-        elif args is None:
-            args = ()
-
-        else:
-            args = tuple(args)
-
-        thr = threading.Thread(target=target, args=args, daemon=daemon)
-        thr.name = target.__name__
-        thr.start()
-
-
-        self.threads.append(thr)
-
-
-    def add_multiple_threads(self, function_data, daemon=True):
-        threads = multiple_threads(function_data, daemon=daemon)
-        self.threads.extend(threads)
-
-    def get_threads(self):
-        return self.threads
-
-    def get_threads_count(self):
-        return len(self.threads)
+    return wrapper
