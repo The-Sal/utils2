@@ -81,7 +81,7 @@ class ThreadPool:
                 elif autostart:
                     thr.start()
 
-                return wrapper
+            return wrapper
 
         return outer
 
