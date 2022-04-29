@@ -1,11 +1,10 @@
 import requests as _r
-from utils2.networking._context import PrePostFunction
 from utils2.networking.downloadAdapter import adapter as _adapter_dl
 
 
 class Session:
     def __init__(self, pre=None, post=None, headers=None):
-        """A session is a wrapper around the requests.
+        """A customisable requests session.
 
         :param headers: The constant headers to send with all requests unless specified otherwise
         :param pre: A function to run before the request, will receive the URL as a parameter
@@ -55,6 +54,17 @@ class Session:
 
     def injectCookie(self, name, value):
         self.session.cookies.set(name=name, value=value)
+
+
+    def request(self, url, headers=None, *args, **kwargs):
+        if headers is None:
+            headers = self.headers
+
+        self._runPre(url)
+        session = self.session.request(url=url, headers=headers, *args, **kwargs)
+        self._runPost(session)
+        return session
+
 
     @staticmethod
     def progressGet(filename: str, url: str):

@@ -12,7 +12,7 @@ class Service(socket.socket):
         """
         All new connections will be passed to the on_connect function which will be threaded.
         Running threads can be accessed via the 'connections' property. The threads are automatically
-        assigned the address of the client as the key.
+        assigned the address of the client as the key. On the __init__ of the class the host and port will bind-ed.
 
 
         :param functions: A ServiceFunctions object which is called when key events occur
@@ -58,13 +58,12 @@ class Service(socket.socket):
     def stop_listen(self):
         """Stops the service from listening for new connections and closes all connections."""
         self._alive = False
-        for thread in self._threads.values():
-            thread.join()
-        self.close()
+        if len(self.connections) > 0:
+            for thread in self._threads.values():
+                thread.join()
+            self.close()
 
 
-    def __del__(self):
-        self.stop_listen()
 
 
 

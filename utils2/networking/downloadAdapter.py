@@ -1,7 +1,7 @@
 import sys
 import requests
 import threading
-from utils2.thread import thread
+from utils2.threading import thread
 
 
 class adapter:

@@ -3,7 +3,7 @@ import time
 
 
 def thread(func):
-    from utils2.thread import thread as __thread
+    from utils2.threading import thread as __thread
 
     def wrapper(*args):
         return __thread(func, args=args, daemon=True)

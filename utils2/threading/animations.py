@@ -1,7 +1,7 @@
 import os
 from sys import stdout
 from time import sleep
-from utils2 import thread
+from utils2 import threading
 from termcolor import colored
 
 
@@ -85,7 +85,7 @@ class animate_iteration:
                             stdout.write('\r' + ' ' * len(selfClass.static + ' ' + animation))
 
 
-        thread.thread(target=animate, args=[self])
+        threading.thread(target=animate, args=[self])
 
     def stop_animation(self):
         self.stop = True
