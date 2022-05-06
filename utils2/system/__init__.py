@@ -1,25 +1,26 @@
 """A package to manage system specific functions, such as file paths, executing commands, etc."""
 import os
-import socket
 import signal as _signal
 from os import path as _path
 from subprocess import Popen, PIPE
-from . import paths
 
 
 try:
+    from . import paths
+    from ._utils import Process
     from .exceptions import InvalidArgument
 except (ImportError, ValueError):
     from exceptions import InvalidArgument
-
+    import paths
+    from _utils import Process
 
 # Simple Values
 homeDirectory = _path.expanduser('~')
-hostName = socket.gethostname()
-hostAddress = socket.gethostbyname(hostName)
+
 
 def command(cmd, read=False, supress=False, waitUntilFinished=True):
     """Execute a command and return the output, if desired"""
+
     def _returnCMD(arg):
         """Return the command"""
         if isinstance(arg, str):
@@ -29,35 +30,33 @@ def command(cmd, read=False, supress=False, waitUntilFinished=True):
         else:
             InvalidArgument("Invalid argument type: {}".format(type(arg)))
 
-
     command_argument = _returnCMD(cmd)
     if read:
-        process = Popen(command_argument, stdout=PIPE, stderr=PIPE)
+        proc = Popen(command_argument, stdout=PIPE, stderr=PIPE)
     else:
         if supress:
             devnull = open(_path.devnull, 'w')
-            process = Popen(command_argument, stdout=devnull, stderr=devnull)
+            proc = Popen(command_argument, stdout=devnull, stderr=devnull)
         else:
-            process = Popen(command_argument)
+            proc = Popen(command_argument)
 
     if waitUntilFinished:
-        process.wait()
-
+        proc.wait()
 
     returnOutput = []
     if supress:
-        returnOutput.append(process)
+        returnOutput.append(proc)
     else:
         if read:
             if waitUntilFinished:
-                process.wait()
-                returnOutput.append(process.stdout.read().decode('utf-8'))
+                proc.wait()
+                returnOutput.append(proc.stdout.read().decode('utf-8'))
             else:
-                returnOutput.append(process)
+                returnOutput.append(proc)
 
 
         else:
-            returnOutput.append(process)
+            returnOutput.append(proc)
 
         return tuple(returnOutput)
 
@@ -81,6 +80,49 @@ def kill(pid, signal=_signal.SIGTERM):
     os.kill(pid, signal)
 
 
+def allProcesses() -> [Process]:
+    """Read all processes running on Mac"""
+    allProcs = command(['ps', 'aux'], read=True)[0].split('\n')
+    allProcs.pop(0)
 
-if __name__ == '__main__':
-    print(hostAddress)
+    procs = []
+
+    for proc in allProcs:
+        components = proc.split(' ')
+        index = 0
+        for component in components:
+            if not component != '':
+                components.pop(index)
+
+            index += 1
+
+        for component in components:
+            if component == '' or component == ' ' or component == '':
+                components.remove(component)
+
+            index += 1
+
+        clean_list = list(dict.fromkeys(components))
+
+        try:
+            clean_list.remove('')
+        except ValueError:
+            pass
+
+        if len(clean_list) == 0:
+            continue
+
+        owner = clean_list[0]
+        pid = clean_list[1]
+        cpu_percent = clean_list[2]
+        memory_percent = clean_list[3]
+        clean_list.pop(0)
+        clean_list.pop(1)
+        clean_list.pop(2)
+        clean_list.pop(3)
+        cmd = ' '.join(clean_list)
+
+        procs.append(Process(owner, pid, cpu_percent, memory_percent, cmd))
+
+    return procs
+

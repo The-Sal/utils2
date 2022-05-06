@@ -7,7 +7,6 @@ import os
 import random
 import shutil
 from os import path as _path
-from utils2.system.exceptions import pathsExceptionWrapper
 
 
 def _decoder(string_path: str) -> str:
@@ -19,6 +18,14 @@ def _decoder(string_path: str) -> str:
         return string_path
 
     string_path = string_path.replace('\\', '')
+
+    if os.path.exists(string_path):
+        if not string_path.startswith('/'):
+            string_path = _path.join(os.getcwd(), string_path)
+        elif string_path.startswith('.'):
+            string_path = _path.join(os.getcwd(), string_path.split('.', 1)[1])
+
+        return string_path
 
     return string_path
 
@@ -188,6 +195,31 @@ class Path:
     def __iter__(self):
         return iter(self.files())
 
+    def __add__(self, other):
+        if isDir(self._path):
+            if isinstance(other, Path):
+                self.addFile(filePath=other.path)
+            else:
+                raise TypeError('Invalid type, Expected Path')
+        else:
+            raise IsADirectoryError('Invalid init path')
+
+    def __sub__(self, other):
+        if isDir(self.path):
+            if isinstance(other, Path):
+                for file in self:
+                    if fileExists(file) == fileName(other.path):
+                        remove(file)
+                        break
+
+                raise FileNotFoundError(
+                    'The file {} was not found in the folder {}'.format(fileName(other.path), self._path))
+
+            else:
+                raise TypeError('Invalid type, Expected Path')
+        else:
+            raise IsADirectoryError('Invalid init path')
+
 
 class Container:
     """Container class."""
@@ -219,7 +251,3 @@ class Container:
         os.chdir(self.cwd)
         remove(self.container)
 
-
-if __name__ == '__main__':
-    p = Path('/Users/Sal/PycharmProjects/utils2/utils2/system/')
-    c = Container()

@@ -49,14 +49,36 @@ def multiple_threads(function_data, daemon=True):
     return obj_s
 
 
-
 class ThreadPool:
     """A class to decorate functions for async execution"""
-    def __init__(self, autostart=False):
+
+    def __init__(self, autostart=False, daemon=False):
         """
+        Decorate whatever function with the class to add it to the que of threads
+        i.e.
+        threadPool = ThreadPool()
+
+        @threadPool()
+        def function(*args, **kwargs):
+            print('Hello World')
+
+        @threadPool(autostart=False)
+        def function2(*args, **kwargs):
+            print('Hello World')
+
+
+        function() -- This function will now run in a thread when called
+        function2() -- This function will not run in a thread when called it requires the threadPool.start() to be
+        called
+
+        note: The threadPool.start() will start every not-alie thread ever wrapped by @threadPool() and called.
+
+
+
         :param autostart: Defines if the threads should be started automatically or stored as a Thread object to be
             called later
         """
+        self.daemon = daemon
         self.autostart = autostart
         self._threads = {
             'Generic': []
@@ -65,15 +87,15 @@ class ThreadPool:
     def __call__(self, autostart=None, identifier=None):
         """:param autostart: Defines if the threads should be started automatically on an individual function
         :param identifier: Defines the identifier to store the thread under"""
+
         def outer(func):
             def wrapper(*arguments, **keywordArguments):
                 from threading import Thread
-                thr = Thread(target=func, args=arguments, kwargs=keywordArguments)
+                thr = Thread(target=func, args=arguments, kwargs=keywordArguments, daemon=self.daemon)
                 if identifier is not None:
                     self._threads[identifier] = thr
                 else:
                     self._threads['Generic'].append(thr)
-
 
                 if autostart is None:
                     if self.autostart:
@@ -86,13 +108,21 @@ class ThreadPool:
         return outer
 
     def start(self):
-        """Starts every thread called"""
+        """Starts every thread called, runtime errors are ignored as threads which are already
+        been started will be called again"""
         for thr in self._threads.values():
             if isinstance(thr, threading.Thread):
-                thr.start()
+                if not thr.is_alive():
+                    try:
+                        thr.start()
+                    except RuntimeError:
+                        pass
 
         for thr in self._threads['Generic']:
-            thr.start()
+            try:
+                thr.start()
+            except RuntimeError:
+                pass
 
     def join(self):
         """Joins every thread"""
@@ -102,7 +132,6 @@ class ThreadPool:
 
         for thr in self._threads['Generic']:
             thr.join()
-
 
     @property
     def threads(self):
@@ -121,3 +150,25 @@ class ThreadPool:
         """
         copy = self._threads
         return copy
+
+
+if __name__ == '__main__':
+    pool = ThreadPool(autostart=True)
+
+
+    @pool()
+    def function(*args, **kwargs):
+        print('Hello World')
+
+
+    @pool(identifier='Identifier', autostart=False)
+    def function2(*args, **kwargs):
+        print('Hello World2')
+
+
+    function()
+    function2()
+
+    pool.start()
+
+    print(pool.threads)
