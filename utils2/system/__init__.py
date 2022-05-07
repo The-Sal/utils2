@@ -4,7 +4,6 @@ import signal as _signal
 from os import path as _path
 from subprocess import Popen, PIPE
 
-
 try:
     from . import paths
     from ._utils import Process
@@ -125,4 +124,15 @@ def allProcesses() -> [Process]:
         procs.append(Process(owner, pid, cpu_percent, memory_percent, cmd))
 
     return procs
+
+
+def foregroundApplication() -> str:
+    """Return the foreground application"""
+    foreground = command(['osascript', '-e',
+                          'tell application "System Events" to name of first application process whose frontmost is '
+                          'true'],
+                         read=True)[0]
+
+
+    return foreground.split('\n')[0]
 
