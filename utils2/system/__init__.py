@@ -1,6 +1,7 @@
 """A package to manage system specific functions, such as file paths, executing commands, etc."""
 import os
 import signal as _signal
+import subprocess as _subprocess
 from os import path as _path
 from subprocess import Popen, PIPE
 
@@ -81,7 +82,7 @@ def kill(pid, signal=_signal.SIGTERM):
 
 def allProcesses() -> [Process]:
     """Read all processes running on Mac"""
-    allProcs = command(['ps', 'aux'], read=True)[0].split('\n')
+    allProcs = _subprocess.Popen(['ps', 'aux'], stdout=_subprocess.PIPE).stdout.read().decode().split('\n')
     allProcs.pop(0)
 
     procs = []
@@ -121,7 +122,10 @@ def allProcesses() -> [Process]:
         clean_list.pop(3)
         cmd = ' '.join(clean_list)
 
-        procs.append(Process(owner, pid, cpu_percent, memory_percent, cmd))
+        try:
+            procs.append(Process(owner, pid, cpu_percent, memory_percent, '/' + cmd.split('/', 1)[1]))
+        except IndexError:
+            procs.append(Process(owner, pid, cpu_percent, memory_percent, cmd))
 
     return procs
 
@@ -135,4 +139,7 @@ def foregroundApplication() -> str:
 
 
     return foreground.split('\n')[0]
+
+if __name__ == '__main__':
+    pass
 
