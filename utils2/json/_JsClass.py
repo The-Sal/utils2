@@ -34,6 +34,23 @@ class JsHandler:
         requestItem = internal_json_dict[item]
         return requestItem
 
+    def __setitem__(self, key, value):
+        Js = self.__loadFile()
+        Js[key] = value
+        self.__dump(Js)
+
+    def __delitem__(self, key):
+        Js = self.__loadFile()
+        Js.pop(key)
+        self.__dump(Js)
+
+    def __contains__(self, item):
+        return item in self.__loadFile()
+
+    def __iter__(self):
+        return iter(self.__loadFile())
+
+
     def __enter__(self):
         return self.__loadFile()
 

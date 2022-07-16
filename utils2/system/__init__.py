@@ -1,5 +1,7 @@
 """A package to manage system specific functions, such as file paths, executing commands, etc."""
 import os
+import sys
+import random
 import signal as _signal
 import subprocess as _subprocess
 from os import path as _path
@@ -139,6 +141,41 @@ def foregroundApplication() -> str:
 
 
     return foreground.split('\n')[0]
+
+
+
+class CaptureSTDOUT:
+    def __init__(self):
+        self.rnSTD = sys.stdout
+        self.newStd = '.' + random.random().__str__() + '.std'
+        self.newStdFile = None
+
+        self.data = None
+
+    def startCapture(self):
+        self.newStdFile = open(self.newStd, 'w+')
+        sys.stdout = self.newStdFile
+
+    def stopCapture(self):
+        sys.stdout = self.rnSTD
+        self.newStdFile.close()
+
+        file = open(self.newStd, 'rb+')
+        content = file.read().decode()
+        file.close()
+        os.remove(self.newStd)
+        self.data = content
+
+    def readCapture(self):
+        return self.data
+
+    def __enter__(self):
+        self.startCapture()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stopCapture()
+
+
 
 if __name__ == '__main__':
     pass
